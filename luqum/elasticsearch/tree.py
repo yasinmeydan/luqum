@@ -25,12 +25,13 @@ class AbstractEItem(JsonSerializableMixin):
     _KEYS_TO_ADD = ('boost', 'fuzziness', '_name')
     ADDITIONAL_KEYS_TO_ADD = ()
 
-    def __init__(self, no_analyze=None, method='term', fields=[], _name=None, field_options=None):
+    def __init__(self, no_analyze=None, method='term', fields=[], _name=None, field_options=None, prefix=False):
         self._method = method
         self._fields = fields
         self._no_analyze = no_analyze if no_analyze else []
         self.zero_terms_query = 'none'
         self.field_options = field_options or {}
+        self.prefix = prefix
         if _name is not None:
             self._name = _name
 
@@ -89,16 +90,6 @@ class AbstractEItem(JsonSerializableMixin):
 
     @property
     def method(self):
-        is_analyzed = self._is_analyzed()
-        if not is_analyzed and self._value_has_wildcard_char():
-            return 'wildcard'
-        elif is_analyzed:
-            if self._value_has_wildcard_char():
-                return 'query_string'
-            elif self._method.startswith("match"):
-                options = self.field_options.get(self.field, {})
-                # Support the type opiton for backward compatibility
-                return options.get("match_type", options.get("type", self._method))
         return self._method
 
 

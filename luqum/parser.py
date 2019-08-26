@@ -20,29 +20,30 @@ class ParseError(ValueError):
 
 
 reserved = {
-  'AND': 'AND_OP',
-  'OR': 'OR_OP',
-  'NOT': 'NOT',
-  'TO': 'TO'}
-
+    'AND': 'AND_OP',
+    'OR': 'OR_OP',
+    'NOT': 'NOT',
+    'TO': 'TO'}
 
 # tokens of our grammar
 tokens = (
-    ['TERM',
-     'PHRASE',
-     'APPROX',
-     'BOOST',
-     'MINUS',
-     'SEPARATOR',
-     'PLUS',
-     'COLUMN',
-     'LPAREN',
-     'RPAREN',
-     'LBRACKET',
-     'RBRACKET'] +
-    # we sort to have a deterministic order, so that gammar signature does not changes
-    sorted(list(reserved.values())))
-
+        ['TERM',
+         'PHRASE',
+         'APPROX',
+         'BOOST',
+         'MINUS',
+         'SEPARATOR',
+         'PLUS',
+         'COLUMN',
+         'LPAREN',
+         'RPAREN',
+         'LBRACKET',
+         'RBRACKET',
+         'PREFIX_SUFFIX',
+         'PREFIX',
+         'SUFFIX'] +
+        # we sort to have a deterministic order, so that gammar signature does not changes
+        sorted(list(reserved.values())))
 
 # text of some simple tokens
 t_PLUS = r'\+'
@@ -56,7 +57,6 @@ t_RPAREN = r'\)'
 t_LBRACKET = r'(\[|\{)'
 t_RBRACKET = r'(\]|\})'
 
-
 # precedence rules
 precedence = (
     ('left', 'OR_OP',),
@@ -67,9 +67,20 @@ precedence = (
     ('nonassoc', 'BOOST'),
     ('nonassoc', 'LPAREN', 'RPAREN'),
     ('nonassoc', 'LBRACKET', 'TO', 'RBRACKET'),
+    ('nonassoc', 'PREFIX_SUFFIX'),
+    ('nonassoc', 'PREFIX'),
+    ('nonassoc', 'SUFFIX'),
     ('nonassoc', 'PHRASE'),
     ('nonassoc', 'TERM'),
 )
+
+PREFIX_SUFFIX_RE = r'(?P<prefix_suffix>(?:\*\S+\*))'
+PREFIX_RE = r'''
+    \b(?<!\*)(?P<prefix>(?:[^\s:^~(){{}}[\],"'+\-\\]+\S+\*))
+'''
+SUFFIX_RE = r'''
+    (?:(?P<suffix>\*\S+[^\s:^~(){{}}[\],"'+\-\\]))(?!\*)\b
+'''
 
 # term
 
@@ -104,6 +115,7 @@ TERM_RE = r'''
   )*
 )
 '''.format(time_re=TIME_RE)
+# (?P<term>(?:[^\s:^~(){{}}[\],"'+\-\\]|\\.)([^\s:^\\~(){{}}[\]]|\\.)*)
 # phrase
 PHRASE_RE = r'''
 (?P<phrase>  # phrase
@@ -115,7 +127,7 @@ PHRASE_RE = r'''
   )*
   "          # closing quote
 )'''
-#r'(?P<phrase>"(?:[^\\"]|\\"|\\[^"])*")' # this is quite complicated to handle \"
+# r'(?P<phrase>"(?:[^\\"]|\\"|\\[^"])*")' # this is quite complicated to handle \"
 # modifiers after term or phrase
 APPROX_RE = r'~(?P<degree>[0-9.]+)?'
 BOOST_RE = r'\^(?P<force>[0-9.]+)?'
@@ -124,6 +136,31 @@ BOOST_RE = r'\^(?P<force>[0-9.]+)?'
 def t_SEPARATOR(t):
     r'\s+'
     pass  # discard separators
+
+
+@lex.TOKEN(PREFIX_RE)
+def t_PREFIX(t):
+    value = t.value
+    if value.endswith('*'):
+        t.value = Prefix(value[:-1])
+    return t
+
+
+@lex.TOKEN(SUFFIX_RE)
+def t_SUFFIX(t):
+    value = t.value
+    if value.startswith('*'):
+        t.value = Suffix(value[1:])
+    return t
+
+
+@lex.TOKEN(PREFIX_SUFFIX_RE)
+def t_PREFIX_SUFFIX(t):
+    value = t.value
+    if value.startswith('*') and value.endswith("*"):
+        t.value = Contain(value)
+    return t
+
 
 @lex.TOKEN(TERM_RE)
 def t_TERM(t):
@@ -238,10 +275,29 @@ def p_boosting(p):
     p[0] = Boost(p[1], p[2])
 
 
+def p_prefix(p):
+    '''unary_expression : PREFIX'''
+    p[0] = p[1]
+
+
+def p_suffix(p):
+    '''unary_expression : SUFFIX'''
+    p[0] = p[1]
+
+
+def p_prefix_suffix(p):
+    '''unary_expression : PREFIX_SUFFIX'''
+    p[0] = Group(AndOperation(Contain(p[1].value[1:-1]), Reversed(p[1].value[1:-1])))
+    # p[0] = p[1]
+
 def p_terms(p):
     '''unary_expression : TERM'''
     p[0] = p[1]
 
+
+# def p_suffix(p):
+#     '''unary_expression : SUFFIX'''
+#     p[0] = p[1]
 
 def p_fuzzy(p):
     '''unary_expression : TERM APPROX'''

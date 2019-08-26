@@ -195,6 +195,23 @@ class Word(Term):
     """
 
 
+class Prefix(Term):
+    """ A prefix word ex: Lorem* """
+    pass
+
+
+class Suffix(Term):
+    pass
+
+
+class Contain(Term):
+    pass
+
+
+class Reversed(Term):
+    pass
+
+
 class Phrase(Term):
     """A phrase term, that is a sequence of words enclose in quotes
 

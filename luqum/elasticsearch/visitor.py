@@ -5,8 +5,7 @@ from luqum.exceptions import OrAndAndOnSameLevel
 from luqum.tree import OrOperation, AndOperation, UnknownOperation
 from luqum.tree import Word  # noqa: F401
 from .tree import (
-    EMust, EMustNot, EShould, EWord, EPhrase, ERange,
-    ENested)
+    EMust, EMustNot, EShould, EWord, EPhrase, ERange, ENested)
 from ..utils import (
     LuceneTreeVisitorV2,
     normalize_nested_fields_specs, normalize_object_fields_specs, flatten_nested_fields_specs)
@@ -336,18 +335,56 @@ class ElasticsearchQueryBuilder(LuceneTreeVisitorV2):
         return ephrase
 
     def visit_word(self, node, parents, context):
-        if self._is_analyzed(context):
-            if self.match_word_as_phrase:
-                method = "match_phrase"
-            else:
-                method = "match"
-        else:
-            method = "term"
+        method = "term"
         return self.es_item_factory.build(
             EWord,
             q=node.value,
             method=method,
             fields=self._fields(context),
+            _name=get_name(node),
+        )
+
+    def visit_prefix(self, node, parents, context):
+        method = "term"
+        return self.es_item_factory.build(
+            EWord,
+            q=node.value,
+            method=method,
+            prefix=True,
+            fields=["%s.prefix" % i for i in self._fields(context)],
+            _name=get_name(node),
+        )
+
+    def visit_suffix(self, node, parents, context):
+        method = "match"
+        return self.es_item_factory.build(
+            EWord,
+            q=node.value,
+            method=method,
+            prefix=True,
+            fields=["%s.suffix" % i for i in self._fields(context)],
+            _name=get_name(node),
+        )
+
+    def visit_contain(self, node, parents, context):
+        method = "match"
+        return self.es_item_factory.build(
+            EWord,
+            q=node.value,
+            method=method,
+            prefix=True,
+            fields=["%s.ngram" % i for i in self._fields(context)],
+            _name=get_name(node),
+        )
+
+    def visit_reversed(self, node, parents, context):
+        method = "match"
+        return self.es_item_factory.build(
+            EWord,
+            q=node.value,
+            method=method,
+            prefix=True,
+            fields=["%s.ngram_reversed" % i for i in self._fields(context)],
             _name=get_name(node),
         )
 
