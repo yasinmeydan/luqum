@@ -76,7 +76,7 @@ precedence = (
 
 PREFIX_SUFFIX_RE = r'(?P<prefix_suffix>(?:\*\S+\*))'
 PREFIX_RE = r'''
-    \b(?<!\*)(?P<prefix>(?:[^\s:^~(){{}}[\],"'+\-\\]+\S+\*))
+    (?P<prefix>(\b(?<!\*)\S+\*)|([#@%=\\$]+\S+\*))
 '''
 SUFFIX_RE = r'''
     (?:(?P<suffix>\*\S+[^\s:^~(){{}}[\],"'+\-\\]))(?!\*)\b
