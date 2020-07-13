@@ -11,13 +11,13 @@ with open('CHANGELOG.rst', 'r') as f:
 
 
 setup(
-    name='luqum',
+    name='ebv-luqum',
     version=__version__,
     description="A Lucene query parser generating ElasticSearch queries and more !",
     long_description=long_description,
     author='Jurismarches',
     author_email='contact@jurismarches.com',
-    url='https://github.com/jurismarches/luqum',
+    url='https://github.com/yasinmeydan/luqum',
     packages=[
         'luqum',
         'luqum.elasticsearch'
